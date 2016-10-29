@@ -5,11 +5,11 @@
 import requests
 from lxml import html
 
-USERNAME = "<USERNAME>"
-PASSWORD = "<PASSWORD>"
+USERNAME = '<USERNAME>'
+PASSWORD = '<PASSWORD>'
 
-LOGIN_URL = "https://bitbucket.org/account/signin/?next=/"
-URL = "https://bitbucket.org/dashboard/overview"
+LOGIN_URL = 'https://bitbucket.org/account/signin/?next=/'
+URL = 'https://bitbucket.org/dashboard/overview'
 proxy = {'https': 'http://10.17.171.11:8080'}
 
 
@@ -19,7 +19,7 @@ def main():
     # Get login csrf token
     result = session_requests.get(LOGIN_URL)
     tree = html.fromstring(result.text)
-    authenticity_token = list(set(tree.xpath("//input[@name='csrfmiddlewaretoken']/@value")))[0]
+    authenticity_token = list(set(tree.xpath('//input[@name='csrfmiddlewaretoken']/@value')))[0]
 
     # Create payload
     payload = {
@@ -34,7 +34,7 @@ def main():
     # Scrape url
     result = session_requests.get(URL, headers=dict(referer=URL))
     tree = html.fromstring(result.content)
-    bucket_names = tree.xpath("//div[@class='repo-list--repo']/a/text()")
+    bucket_names = tree.xpath('//div[@class='repo-list--repo']/a/text()')
 
     print(bucket_names)
 
