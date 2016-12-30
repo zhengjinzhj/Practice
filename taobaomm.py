@@ -6,9 +6,11 @@ import re
 import os
 import csv
 import requests
+# from threading import Thread
 
 
 class TaobaoMM(object):
+    proxy = {'http': '10.17.171.11:8080', 'https': '10.17.171.11:8080'}
 
     def __init__(self):
         self.site_url = 'https://mm.taobao.com/tstar/search/tstar_model.do?_input_charset=utf-8' \
@@ -17,7 +19,6 @@ class TaobaoMM(object):
         # self.http_proxy = urllib2.ProxyHandler({'http': '10.17.171.11:8080'})
         # self.opener = urllib2.build_opener(self.http_proxy, self.https_proxy)
         # urllib2.install_opener(self.opener)
-        self.proxy = {'http': '10.17.171.11:8080', 'https': '10.17.171.11:8080'}
 
     def get_page(self, page_index):
         # Get the given page's (index page) page source and do some small 'formatted'.
@@ -59,12 +60,13 @@ class TaobaoMM(object):
                                item[7], item[8], item[9], item[10], item[11]])
         return model_info
 
-    def get_album_list(self, model_id):
+    @staticmethod
+    def get_album_list(model_id):
         # Get page number of all albums, after this, crawl all the pages and find the link and name of all these albums
         first_album_list_url = 'https://mm.taobao.com/self/album/open_album_list.htm?user_id=' + str(model_id)
         # response = self.opener.open(first_album_list_url)
         # find_total_page = response.read().decode('gbk').encode('utf-8')
-        find_total_page = requests.get(first_album_list_url, proxies=self.proxy).text
+        find_total_page = requests.get(first_album_list_url, proxies=TaobaoMM.proxy).text
         page_no_pattern = re.compile('<input name="totalPage.*?value="(.*?)" type="hidden" />', re.S)
         total_page = re.findall(page_no_pattern, find_total_page)
         # print total_page[0], type(total_page[0])
@@ -75,7 +77,7 @@ class TaobaoMM(object):
             # response = self.opener.open(album_list_url)
             # response = response.read()
             # album_link_page = response.decode('gbk').encode('utf-8')
-            album_link_page = requests.get(album_list_url, proxies=self.proxy).text
+            album_link_page = requests.get(album_list_url, proxies=TaobaoMM.proxy).text
             # print album_link_page
             # album_link_page = self.remove_double_quotation_marks(album_link_page)
             pattern = re.compile('<h4>.*?album_id=(.*?)\D.*?>(.*?)</a></h4>.*?mm-pic-number">\((.*?)\D', re.S)
@@ -129,13 +131,14 @@ class TaobaoMM(object):
                 for image_url in image_list:
                     self.save_img(image_url, 'mm.taobao' + '/' + model_name + '/' + album_name)
 
-    def get_img_link(self, model_id, album_id):
+    @staticmethod
+    def get_img_link(model_id, album_id):
         image_url = []
         first_album_url = 'https://mm.taobao.com/album/json/get_photo_list_tile_data.htm?user_id='\
                           + str(model_id) + '&album_id=' + str(album_id)
         # response = self.opener.open(first_album_url)
         # response = response.read()
-        response = requests.get(first_album_url, proxies=self.proxy).text
+        response = requests.get(first_album_url, proxies=TaobaoMM.proxy).text
         page_no_pattern = re.compile('<input name="totalPage.*?value="(.*?)" type="hidden" />', re.S)
         total_page = re.findall(page_no_pattern, response)
         print 'Collecting all picture links in this album...'
@@ -143,21 +146,22 @@ class TaobaoMM(object):
             album_url = first_album_url + '&page=' + str(i)
             # response = self.opener.open(album_url)
             # response = response.read()
-            response = requests.get(album_url, proxies=self.proxy).text
+            response = requests.get(album_url, proxies=TaobaoMM.proxy).text
             pattern = re.compile('<img src="(.*?)" class.*?', re.S)
             image_urls = re.findall(pattern, response)
             for item in image_urls:
                 image_url.append('http:' + item)
         return image_url
 
-    def save_img(self, image_url, folder_name):
+    @staticmethod
+    def save_img(thread_name, image_url, folder_name):
         image_name = image_url.split('/').pop()
         image_location = folder_name + '/' + image_name
         if not os.path.isfile(image_location):
-            print 'Saving picture ' + image_name
+            print thread_name + ': Saving picture ' + image_name
             # image_data = self.opener.open(image_url)
             # image_data = image_data.read()
-            image_data = requests.get(image_url, proxies=self.proxy).content
+            image_data = requests.get(image_url, proxies=TaobaoMM.proxy).content
             f = open(image_location, 'wb')
             f.write(image_data)
             f.close()
@@ -232,10 +236,9 @@ class TaobaoMM(object):
                 else:
                     print 'Found a model, her name is ' + item[3] + ', but she is not very popular, skip...'
 
-demo = TaobaoMM()
+# demo = TaobaoMM()
 # demo.save_info(1, 2)
 # Download a single model's albums by her id and name
-demo.single_model_all_albums('141234233')
+# demo.single_model_all_albums('141234233')
 # demo.download_picture(1, 1)
 # demo.single_album_all_pictures('141234233', '10001066316')
-
