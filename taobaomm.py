@@ -11,22 +11,31 @@ import requests
 
 class TaobaoMM(object):
     proxy = {'http': '10.17.171.11:8080', 'https': '10.17.171.11:8080'}
+    site_url = 'https://mm.taobao.com/tstar/search/tstar_model.do?_input_charset=utf-8&pageSize=100&currentPage='
+    model_id = ''
 
-    def __init__(self):
-        self.site_url = 'https://mm.taobao.com/tstar/search/tstar_model.do?_input_charset=utf-8' \
-                        '&pageSize=100&currentPage='
-        # self.https_proxy = urllib2.ProxyHandler({'https': '10.17.171.11:8080'})
-        # self.http_proxy = urllib2.ProxyHandler({'http': '10.17.171.11:8080'})
-        # self.opener = urllib2.build_opener(self.http_proxy, self.https_proxy)
-        # urllib2.install_opener(self.opener)
+    def __init__(self, model_id):
+        TaobaoMM.model_id = model_id
+        TaobaoMM.boot()
 
-    def get_page(self, page_index):
+    @staticmethod
+    def boot():
+        print 'Getting model name and album info...'
+        model_name = TaobaoMM.get_model_info(TaobaoMM.model_id)[0][0]
+        album_count = len(TaobaoMM.get_album_list())
+        print "The model's name is: %s, she has %d albums" % (model_name, album_count)
+        model_path = 'mm.taobao/' + model_name
+        TaobaoMM.make_folder(model_path)
+        os.chdir(model_path)
+
+    @staticmethod
+    def get_page(page_index):
         # Get the given page's (index page) page source and do some small 'formatted'.
-        url = self.site_url + str(page_index)
-        response = requests.get(url, proxies=self.proxy).text
+        url = TaobaoMM.site_url + str(page_index)
+        response = requests.get(url, proxies=TaobaoMM.proxy).text
         # response = self.opener.open(url)
         # response = response.read().decode('gbk')
-        source_data = self.remove_double_quotation_marks(response)
+        source_data = TaobaoMM.remove_double_quotation_marks(response)
         return source_data
 
     def get_contents(self, page_index):
@@ -40,11 +49,12 @@ class TaobaoMM(object):
             contents.append([item[0], item[1], item[2], item[3], item[4], item[5], item[6]])
         return contents
 
-    def get_model_info(self, model_id):
+    @staticmethod
+    def get_model_info(model_id):
         info_url = 'https://mm.taobao.com/self/info/model_info_show.htm?user_id=' + str(model_id)
         # response = self.opener.open(info_url).read()
         # response = response.decode('gbk').encode('utf-8')
-        response = requests.get(info_url, proxies=self.proxy).text
+        response = requests.get(info_url, proxies=TaobaoMM.proxy).text
         model_info = []
         pattern = re.compile('<ul class="mm-p-info-cell clearfix">.*?<span>(.*?)</span>.*?<span>(.*?)'
                              '</span>.*?<span>(.*?)</span>.*?<span>(.*?)</span>.*?<span>(.*?)'
@@ -53,17 +63,17 @@ class TaobaoMM(object):
         items = re.findall(pattern, response)
         for item in items:
             birthday = item[1].strip()
-            birthday = self.remove_space(birthday)
+            birthday = TaobaoMM.remove_space(birthday)
             education = item[5].strip()
-            education = self.remove_space(education)
+            education = TaobaoMM.remove_space(education)
             model_info.append([item[0], birthday, item[2], item[3], item[4], education, item[6],
                                item[7], item[8], item[9], item[10], item[11]])
         return model_info
-
+    
     @staticmethod
-    def get_album_list(model_id):
+    def get_album_list():
         # Get page number of all albums, after this, crawl all the pages and find the link and name of all these albums
-        first_album_list_url = 'https://mm.taobao.com/self/album/open_album_list.htm?user_id=' + str(model_id)
+        first_album_list_url = 'https://mm.taobao.com/self/album/open_album_list.htm?user_id=' + TaobaoMM.model_id
         # response = self.opener.open(first_album_list_url)
         # find_total_page = response.read().decode('gbk').encode('utf-8')
         find_total_page = requests.get(first_album_list_url, proxies=TaobaoMM.proxy).text
@@ -94,7 +104,7 @@ class TaobaoMM(object):
 
     def download_all_album(self, model_id, model_name):
         self.make_folder('mm.taobao' + '/' + model_name)
-        album_info = self.get_album_list(model_id)
+        album_info = self.get_album_list()
         for album in album_info:
             # print album, type(album)
             # for item in album:
@@ -113,26 +123,28 @@ class TaobaoMM(object):
         model_name = model_info[0][0]
         self.download_all_album(model_id, model_name)
 
-    def single_album_all_pictures(self, model_id, album_id):
+    @staticmethod
+    def single_album_all_pictures(thread_name, model_id, album_id):
         # Download a single album by model_id and album_id
-        print 'Getting model name and album info...'
-        albums = self.get_album_list(model_id)
-        model_info = self.get_model_info(model_id)
-        model_name = model_info[0][0]
-        self.make_folder('mm.taobao' + '/' + model_name)
+        albums = TaobaoMM.get_album_list()
+        # model_info = TaobaoMM.get_model_info(model_id)
+        # model_name = model_info[0][0]
+        # TaobaoMM.make_folder('mm.taobao' + '/' + model_name)
         for album in albums:
             # print album
             if album_id == album[0]:
-                album_name = self.remove_dot(album[1])
-                print 'Album ' + album_name + ' has ' + str(album[2]) + ' pictures'
-                self.make_folder('mm.taobao' + '/' + model_name + '/' + album_name)
-                print 'Downloading album ' + album_name
-                image_list = self.get_img_link(model_id, album[0])
+                album_name = TaobaoMM.remove_dot(album[1])
+                print '%s: Album %s has %s pictures' % (thread_name, album_name, album[2])
+                # current_dir = os.getcwd()
+                TaobaoMM.make_folder(album_name)
+                os.chdir(album_name)
+                print '%s: Downloading album %s' % (thread_name, album_name)
+                image_list = TaobaoMM.get_img_link(thread_name, model_id, album[0])
                 for image_url in image_list:
-                    self.save_img(image_url, 'mm.taobao' + '/' + model_name + '/' + album_name)
+                    TaobaoMM.save_img(thread_name, image_url, album_name)
 
     @staticmethod
-    def get_img_link(model_id, album_id):
+    def get_img_link(thread_name, model_id, album_id):
         image_url = []
         first_album_url = 'https://mm.taobao.com/album/json/get_photo_list_tile_data.htm?user_id='\
                           + str(model_id) + '&album_id=' + str(album_id)
@@ -141,7 +153,7 @@ class TaobaoMM(object):
         response = requests.get(first_album_url, proxies=TaobaoMM.proxy).text
         page_no_pattern = re.compile('<input name="totalPage.*?value="(.*?)" type="hidden" />', re.S)
         total_page = re.findall(page_no_pattern, response)
-        print 'Collecting all picture links in this album...'
+        print '%s: Collecting all picture links in this album...' % thread_name
         for i in xrange(1, int(total_page[0])+1):
             album_url = first_album_url + '&page=' + str(i)
             # response = self.opener.open(album_url)
@@ -158,7 +170,7 @@ class TaobaoMM(object):
         image_name = image_url.split('/').pop()
         image_location = folder_name + '/' + image_name
         if not os.path.isfile(image_location):
-            print thread_name + ': Saving picture ' + image_name
+            print '%s: Saving picture %s' % (thread_name, image_name)
             # image_data = self.opener.open(image_url)
             # image_data = image_data.read()
             image_data = requests.get(image_url, proxies=TaobaoMM.proxy).content
@@ -170,7 +182,8 @@ class TaobaoMM(object):
 
     @staticmethod
     def make_folder(folder_name):  # folder_name is model name or album name
-        if not os.path.exists(folder_name):
+        current_dir = str(os.getcwd())
+        if not os.path.exists(current_dir + '\\' + folder_name):
             print 'Making folder "' + folder_name + '"'
             os.mkdir(folder_name)
         else:
@@ -236,9 +249,11 @@ class TaobaoMM(object):
                 else:
                     print 'Found a model, her name is ' + item[3] + ', but she is not very popular, skip...'
 
-# demo = TaobaoMM()
+demo = TaobaoMM('141234233')
 # demo.save_info(1, 2)
 # Download a single model's albums by her id and name
 # demo.single_model_all_albums('141234233')
 # demo.download_picture(1, 1)
 # demo.single_album_all_pictures('141234233', '10001066316')
+# print demo.get_album_list()
+demo.make_folder('金甜甜')
