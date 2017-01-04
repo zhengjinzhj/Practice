@@ -20,12 +20,12 @@ class TaobaoMM(object):
 
     @staticmethod
     def boot():
-        print 'Getting model name and album info...'
+        print 'Initial: Getting model name and album info...'
         model_name = TaobaoMM.get_model_info(TaobaoMM.model_id)[0][0]
         album_count = len(TaobaoMM.get_album_list())
-        print "The model's name is: %s, she has %d albums" % (model_name, album_count)
+        print "Initial: The model's name is: %s, she has %d albums" % (model_name, album_count)
         model_path = 'mm.taobao/' + model_name
-        TaobaoMM.make_folder(model_path)
+        TaobaoMM.make_folder('Initial', model_path)
         os.chdir(model_path)
 
     @staticmethod
@@ -135,13 +135,20 @@ class TaobaoMM(object):
             if album_id == album[0]:
                 album_name = TaobaoMM.remove_dot(album[1])
                 print '%s: Album %s has %s pictures' % (thread_name, album_name, album[2])
-                # current_dir = os.getcwd()
-                TaobaoMM.make_folder(album_name)
-                os.chdir(album_name)
-                print '%s: Downloading album %s' % (thread_name, album_name)
-                image_list = TaobaoMM.get_img_link(thread_name, model_id, album[0])
-                for image_url in image_list:
-                    TaobaoMM.save_img(thread_name, image_url, album_name)
+                TaobaoMM.make_folder(thread_name, album_name)
+                file_count = 0
+                folder_path = os.getcwdu() + '/' + album_name
+                for root, dirs, files in os.walk(folder_path.decode('utf-8')):
+                    for _ in files:
+                        file_count += 1
+                if file_count < int(album[2]):
+                    print '%s: Downloading album %s' % (thread_name, album_name)
+                    image_list = TaobaoMM.get_img_link(thread_name, model_id, album[0])
+                    for image_url in image_list:
+                        TaobaoMM.save_img(thread_name, image_url, album_name)
+                else:
+                    print '%s: Album %s(%d/%s) has been downloaded completely, skip...' %\
+                          (thread_name, album_name, file_count, album[2])
 
     @staticmethod
     def get_img_link(thread_name, model_id, album_id):
@@ -168,9 +175,9 @@ class TaobaoMM(object):
     @staticmethod
     def save_img(thread_name, image_url, folder_name):
         image_name = image_url.split('/').pop()
-        image_location = folder_name + '/' + image_name
+        image_location = os.getcwdu() + u'/' + folder_name + u'/' + image_name
         if not os.path.isfile(image_location):
-            print '%s: Saving picture %s' % (thread_name, image_name)
+            print '%s: Saving picture %s to folder %s' % (thread_name, image_name, folder_name)
             # image_data = self.opener.open(image_url)
             # image_data = image_data.read()
             image_data = requests.get(image_url, proxies=TaobaoMM.proxy).content
@@ -178,16 +185,15 @@ class TaobaoMM(object):
             f.write(image_data)
             f.close()
         else:
-            print image_name + ' already exists, skip...'
+            print '%s: %s in %s already exists, skip...' % (thread_name, image_name, folder_name)
 
     @staticmethod
-    def make_folder(folder_name):  # folder_name is model name or album name
-        current_dir = str(os.getcwd())
-        if not os.path.exists(current_dir + '\\' + folder_name):
-            print 'Making folder "' + folder_name + '"'
+    def make_folder(thread_name, folder_name):  # folder_name is model name or album name
+        if not os.path.exists(folder_name):
+            print '%s: Making folder "%s"' % (thread_name, folder_name)
             os.mkdir(folder_name)
         else:
-            print 'Folder "' + folder_name + '" already exists, skip...'
+            print '%s: Folder "%s" already exists, skip...' % (thread_name, folder_name)
 
     @staticmethod
     def remove_double_quotation_marks(source_data):
@@ -249,11 +255,11 @@ class TaobaoMM(object):
                 else:
                     print 'Found a model, her name is ' + item[3] + ', but she is not very popular, skip...'
 
-demo = TaobaoMM('141234233')
+# demo = TaobaoMM('141234233')
 # demo.save_info(1, 2)
 # Download a single model's albums by her id and name
 # demo.single_model_all_albums('141234233')
 # demo.download_picture(1, 1)
 # demo.single_album_all_pictures('141234233', '10001066316')
 # print demo.get_album_list()
-demo.make_folder('金甜甜')
+# demo.make_folder('金甜甜')
